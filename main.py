@@ -5,11 +5,13 @@ import urllib.parse
 
 app = Flask(__name__)
 
-# List of shared directories - add more directories here
-SHARED_DIRECTORIES = [
-    "C:/Users/user/Downloads",
-    "F:/tmp"
-]
+# Read shared directories from dirs.txt
+try:
+    with open('dirs.txt', 'r') as f:
+        SHARED_DIRECTORIES = [line.strip() for line in f if line.strip()]
+except FileNotFoundError:
+    print("Warning: dirs.txt not found. No directories will be shared.")
+    SHARED_DIRECTORIES = []
 
 # HTML template for the directory listing page
 DIRECTORY_TEMPLATE = """
@@ -89,7 +91,7 @@ DIRECTORY_TEMPLATE = """
             {% for directory in directories %}
                 <li class="directory-item">
                     {% if directory.available %}
-                        <a href="/browse/{{ directory.encoded_path }}" class="directory-link">
+                        <a href="/browse?dir={{ directory.encoded_path }}" class="directory-link">
                             📂 {{ directory.path }}
                         </a>
                         <div class="directory-status status-available">
@@ -248,10 +250,17 @@ def index():
     
     return render_template_string(DIRECTORY_TEMPLATE, directories=directories)
 
-@app.route('/browse/<path:encoded_directory>')
-def browse_directory(encoded_directory):
+@app.route('/browse')
+def browse_directory():
     """Display the list of files in the specified directory."""
     try:
+        from flask import request
+        
+        # Get directory from query parameters
+        encoded_directory = request.args.get('dir')
+        if not encoded_directory:
+            return "<h1>Error: Missing directory parameter</h1>", 400
+            
         # Decode the directory path
         directory_path = urllib.parse.unquote(encoded_directory)
         
